@@ -36,6 +36,8 @@ export class World {
   readonly activeLiquid = new Set<string>();
   /** Chest inventories keyed by "x,y" (slots managed by game/inventory). */
   readonly chests = new Map<string, unknown>();
+  /** Active portal interiors keyed by "x,y" of the interior origin → target dim. */
+  readonly portals = new Map<string, string>();
   /** Chunk diffs restored from a save, applied when the chunk generates. */
   private savedChunks = new Map<string, ChunkData>();
 

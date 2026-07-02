@@ -24,6 +24,8 @@ export interface GameEvents extends Record<string, unknown> {
   tileBroken: { x: number; y: number; blockKey: string };
   tilePlaced: { x: number; y: number; blockKey: string };
   pickup: { itemKey: string; count: number };
+  crafted: { itemKey: string; count: number };
+  enemyKilled: { key: string };
   questUpdate: { questKey: string; done: boolean };
   portalUsed: { toDim: string };
   eventStarted: { key: string; name: string };
@@ -82,6 +84,8 @@ export interface InputState {
 
 /** What systems can see and do. Implemented by Game. */
 export interface Sim {
+  /** World seed (numeric hash) — all generation context derives from it. */
+  seed: number;
   world: World; // active dimension's world
   dimKey: string;
   entities: Entity[];

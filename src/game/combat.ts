@@ -133,6 +133,7 @@ function onDeath(sim: Sim, e: Entity, cause: string): void {
   if (e.kind === 'enemy' && e.data.defKey) {
     const def = enemyByKey(e.data.defKey);
     sim.killCounter.set(def.key, (sim.killCounter.get(def.key) ?? 0) + 1);
+    sim.bus.emit('enemyKilled', { key: def.key });
     // Loot rolls (lootLuck trait multiplies chances).
     const luck = sim.bonus('lootLuck');
     for (const d of def.drops) {
