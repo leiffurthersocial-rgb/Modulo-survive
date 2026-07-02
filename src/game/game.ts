@@ -185,6 +185,14 @@ export class Game implements Sim {
   }
 
   private step(input: InputState, dt: number): void {
+    // Record previous positions first so rendering can interpolate.
+    this.player.px = this.player.x;
+    this.player.py = this.player.y;
+    for (const e of this.entities) {
+      e.px = e.x;
+      e.py = e.y;
+    }
+
     // --- time & schedule ---
     const prevT = this.timeOfDay;
     this.timeOfDay += dt / DAY_LENGTH;
@@ -265,12 +273,6 @@ export class Game implements Sim {
     }
 
     sweepDead(this.entities);
-
-    // Record previous positions for interpolation.
-    for (const e of this.entities) {
-      e.px = e.x;
-      e.py = e.y;
-    }
   }
 
   private updateDrops(dt: number): void {
