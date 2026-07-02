@@ -21,16 +21,20 @@
 | 11 | Character traits could unbalance mid-game | Traits capped at 10–25 % early-game multipliers, no exclusive content |
 | 12 | Scope: 8 dimensions × full content in one release | Dimensions share one parameterized generator + shared boss framework; per-dimension cost is data, not code |
 
-## Milestones
+## Milestones (all shipped in v0.1.0)
 
-- **M0 — Foundation** ✅ planned: repo, CI, Vercel, docs, toolchain.
-- **M1 — World**: chunks, worker generation, rendering, lighting, day/night, parallax.
-- **M2 — Player**: movement, mining/building, inventory, crafting, tools, survival meters.
-- **M3 — Danger**: enemies, combat, projectiles, status effects, spawner, night pressure.
-- **M4 — Persistence**: saves, autosave, character/world selection screens.
-- **M5 — Depth**: NPCs, farming, machines, quests, world events, weather.
-- **M6 — Dimensions & Bosses**: portals, 8 dimensions, boss framework + encounters.
-- **M7 — Polish**: audio, particles, settings, touch/gamepad, map, accessibility, perf pass.
+- **M0 — Foundation** ✅ repo, CI, Vercel, docs, toolchain.
+- **M1 — World** ✅ chunks, worker generation, rendering, lighting, day/night, parallax.
+- **M2 — Player** ✅ movement, mining/building, inventory, crafting, tools, survival meters.
+- **M3 — Danger** ✅ enemies, combat, projectiles, status effects, spawner, night pressure.
+- **M4 — Persistence** ✅ saves, autosave, character/world selection screens.
+- **M5 — Depth** ✅ NPCs, farming, machines, quests, world events, weather.
+- **M6 — Dimensions & Bosses** ✅ portals, 8 dimensions, boss framework + encounters.
+- **M7 — Polish** ✅ audio, particles, settings, touch/gamepad, map, verified in-browser.
+
+Known v0.1 simplifications: explored-map bits are session-local (not persisted);
+island strata carry no buried structures; lighting converges over a few frames
+after fast travel (initialized bright, never black).
 
 ## Post-v0.1 Backlog
 

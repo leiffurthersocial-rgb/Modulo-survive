@@ -359,8 +359,7 @@ export class Renderer {
           sprite.position.set(ex * TILE, (ey + e.h) * TILE);
           const def = e.kind === 'enemy' ? enemyByKey(e.data.defKey) : null;
           const s = def ? def.scale : 1;
-          sprite.scale.set(s * -e.facing * -1, s);
-          sprite.scale.x = s * e.facing;
+          sprite.scale.set(s * e.facing, s);
           sprite.alpha = e.iframes > 0.1 ? 0.6 : 1;
           break;
         }

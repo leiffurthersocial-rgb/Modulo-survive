@@ -361,7 +361,7 @@ function mine(sim: Sim, input: InputState, tool: { type: string; power: number; 
     pd.mineY = ty;
     pd.mineProgress = 0;
   }
-  const mineSpeed = tool.speed * (sim.bonus('mineSpeed')) * (sim.bonus('buildSpeed') > 1 ? 1 : 1);
+  const mineSpeed = tool.speed * sim.bonus('mineSpeed');
   pd.mineProgress += (mineSpeed / Math.max(0.05, def.hardness)) * dt;
   pd.swingT = 0.2;
   pd.swingAngle = aim.ang;
@@ -517,7 +517,7 @@ function attack(sim: Sim, input: InputState, itemKey: string): void {
   const item = itemByKey(itemKey);
   const w = item.weapon!;
   const aim = aimClamped(sim, input);
-  pd.useCooldown = 1 / (w.speed * Math.sqrt(sim.bonus('craftSpeed') > 1 ? 1 : 1));
+  pd.useCooldown = 1 / w.speed;
   pd.swingT = Math.min(0.35, 1 / w.speed);
   pd.swingAngle = aim.ang;
   p.facing = Math.cos(aim.ang) >= 0 ? 1 : -1;
