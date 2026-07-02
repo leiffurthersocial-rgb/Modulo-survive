@@ -415,6 +415,12 @@ export class Renderer {
     entry.vy = -18;
   }
 
+  /** Convert a client-pixel position to world tile coordinates. */
+  screenToWorld(sx: number, sy: number): [number, number] {
+    const p = this.worldRoot.toLocal({ x: sx, y: sy });
+    return [p.x / TILE, p.y / TILE];
+  }
+
   resize(): void {
     this.background.resize(this.app.screen.width, this.app.screen.height);
     this.weather.resize(this.app.screen.width, this.app.screen.height);

@@ -168,6 +168,11 @@ export class Game implements Sim {
 
   // ------------------------------------------------------------------ loop
 
+  /** Render interpolation factor between the last two sim steps. */
+  get interpolationAlpha(): number {
+    return this.accumulator / STEP;
+  }
+
   /** Advance with real dt; runs 0..n fixed steps. Returns steps run. */
   update(dtReal: number, input: InputState): number {
     if (this.paused) return 0;
