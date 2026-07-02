@@ -59,9 +59,21 @@ export class World {
     return this.chunkAt(floorDiv(x, CHUNK), floorDiv(y, CHUNK));
   }
 
-  /** Provide a chunk diff from a save; applied when/if the chunk loads. */
+  /** Provide a chunk diff from a save; applied now if loaded, else on load. */
   restoreChunk(cx: number, cy: number, data: ChunkData): void {
-    this.savedChunks.set(chunkKey(cx, cy), data);
+    const key = chunkKey(cx, cy);
+    this.savedChunks.set(key, data);
+    const live = this.chunks.get(key);
+    if (live) {
+      live.fg.set(data.fg);
+      live.bg.set(data.bg);
+      live.liquid.set(data.liquid);
+      live.liquidType.set(data.liquidType);
+      live.modified = true;
+      live.visualDirty = true;
+      live.lightDirty = true;
+      this.activateChunkLiquids(live);
+    }
   }
 
   /** Stream chunks around a center tile; evict far ones. Returns evicted modified chunks. */

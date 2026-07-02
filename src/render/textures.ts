@@ -73,7 +73,7 @@ function px(ctx: CanvasRenderingContext2D, x: number, y: number, color: number, 
   ctx.fillRect(x, y, 1, 1);
 }
 
-function paintBlock(ctx: CanvasRenderingContext2D, def: BlockDef, id: number): void {
+function paintBlock(ctx: CanvasRenderingContext2D, def: BlockDef, _id: number): void {
   const seed = hashString(`tile:${def.key}`);
   const c = def.color;
   const c2 = def.color2 ?? shade(c, 1.35);

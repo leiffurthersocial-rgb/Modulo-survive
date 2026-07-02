@@ -22,7 +22,7 @@ export interface DamageOpts {
   color?: number;
 }
 
-export function entityDefense(e: Entity, sim: Sim): number {
+export function entityDefense(e: Entity, _sim: Sim): number {
   if (e.kind === 'player') {
     const pd = e.data as PlayerData;
     let d = pd.character.bonuses.defense ?? 0; // Warrior trait: flat defense
