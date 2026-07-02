@@ -62,7 +62,7 @@ export const CHARACTERS: readonly CharacterDef[] = [
     trait: 'gatherer',
     traitName: 'Gatherer',
     traitDesc: 'Mines and chops faster, with richer yields.',
-    appearance: { skin: SKIN, hair: 0xe8d478, hairStyle: 'short', eyes: 0x5f8fd9, shirt: 0x4a9e4f, pants: 0x4a5568, height: 1, build: 1 },
+    appearance: { skin: SKIN, hair: 0xe8d478, hairStyle: 'short', eyes: 0x5f8fd9, shirt: 0x6b83a8, pants: 0x4a5568, height: 1, build: 1 },
     bonuses: { mineSpeed: 1.2, resourceYield: 1.1 },
     startItems: [['woodHammer', 1], ['torch', 15]],
   },

@@ -406,7 +406,30 @@ export function breakTile(sim: Sim, tx: number, ty: number, wallLayer = false): 
       if (aDef.needsFloor || aDef.fragile) breakTile(sim, tx, ty - 1);
     }
     if (def.furniture === 'chest') spillChest(sim, tx, ty);
+    // Felling: chopping a log takes the trunk above and its canopy with it.
+    if (def.style === 'log') fellTreeAbove(sim, tx, ty);
   }
+}
+
+function fellTreeAbove(sim: Sim, tx: number, ty: number): void {
+  let y = ty - 1;
+  let logs = 0;
+  while (logs < 24) {
+    const def = block(sim.world.getTile(tx, y));
+    if (def.style !== 'log') break;
+    sim.world.setTile(tx, y, AIR);
+    spawnDrop(sim, tx + 0.5, y + 0.5, def.key, 1);
+    // Clear this segment's canopy.
+    for (let dx = -3; dx <= 3; dx++) {
+      for (let dy = -3; dy <= 1; dy++) {
+        const id = sim.world.getTile(tx + dx, y + dy);
+        if (id !== AIR && block(id).style === 'leaf') sim.world.setTile(tx + dx, y + dy, AIR);
+      }
+    }
+    logs++;
+    y--;
+  }
+  if (logs > 0) sim.bus.emit('particles', { key: 'break', x: tx + 0.5, y: y + 1, count: 10, color: 0x4e9c46 });
 }
 
 function spillChest(sim: Sim, tx: number, ty: number): void {

@@ -42,7 +42,8 @@ export class Chunk {
     this.bg = data?.bg ?? new Uint16Array(CHUNK_AREA);
     this.liquid = data?.liquid ?? new Uint8Array(CHUNK_AREA);
     this.liquidType = data?.liquidType ?? new Uint8Array(CHUNK_AREA);
-    this.light = new Uint8Array(34 * 34);
+    // Start bright, not black: avoids a dark flash before the first re-light.
+    this.light = new Uint8Array(34 * 34).fill(215);
     this.explored = new Uint8Array(CHUNK_AREA / 8);
   }
 

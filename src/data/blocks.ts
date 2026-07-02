@@ -88,9 +88,11 @@ ore('voidglassOre', 'Voidglass Ore', 0x9a7ae8, 3.2, 5, 0x241f33, 5);
 // ---------------------------------------------------------------------------
 // Trees (log + leaves per species)
 // ---------------------------------------------------------------------------
+// Trees are scenery, not walls: logs/leaves never block movement. Chopping a
+// trunk fells everything above it (game/player.ts breakTile cascade).
 const wood = (key: string, name: string, logC: number, leafC: number) => {
-  reg({ key: `${key}Log`, name: `${name} Log`, color: logC, style: 'log', solid: true, tool: 'axe', hardness: 0.9 });
-  reg({ key: `${key}Leaves`, name: `${name} Leaves`, color: leafC, style: 'leaf', solid: true, tool: 'any', hardness: 0.15, drops: null, noItem: true });
+  reg({ key: `${key}Log`, name: `${name} Log`, color: logC, style: 'log', solid: false, tool: 'axe', hardness: 0.9, opacity: 2 });
+  reg({ key: `${key}Leaves`, name: `${name} Leaves`, color: leafC, style: 'leaf', solid: false, tool: 'any', hardness: 0.15, drops: null, opacity: 2, noItem: true });
 };
 wood('oak', 'Oak', 0x7a5230, 0x4e9c46);
 wood('pine', 'Pine', 0x5d4027, 0x2f6b4f);
