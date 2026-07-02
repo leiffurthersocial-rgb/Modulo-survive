@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+*.local
+.vercel/
+.DS_Store
+*.log
+.eslintcache
