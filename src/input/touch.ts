@@ -37,13 +37,21 @@ export function mountTouchControls(root: HTMLElement): () => void {
     const dx = (e.clientX - cx) / 40;
     const dy = (e.clientY - cy) / 40;
     input.touch.moveX = Math.max(-1, Math.min(1, dx));
-    input.touch.aimAngle = Math.atan2(dy, dx);
+    // Only steer aim once the stick is pushed a meaningful amount, so tiny
+    // wobble doesn't fight the forward-and-down default.
+    if (Math.hypot(dx, dy) > 0.35) {
+      input.touch.aimAngle = Math.atan2(dy, dx);
+      input.touch.aimActive = true;
+    } else {
+      input.touch.aimActive = false;
+    }
     nub.style.transform = `translate(${Math.max(-36, Math.min(36, dx * 40))}px, ${Math.max(-36, Math.min(36, dy * 40))}px)`;
   });
   const stickEnd = (e: PointerEvent) => {
     if (e.pointerId !== stickId) return;
     stickId = -1;
     input.touch.moveX = 0;
+    input.touch.aimActive = false;
     nub.style.transform = '';
   };
   stick.addEventListener('pointerup', stickEnd);

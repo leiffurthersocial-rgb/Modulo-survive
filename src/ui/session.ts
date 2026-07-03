@@ -138,6 +138,7 @@ function frame(now: number): void {
     (sx, sy) => renderer.screenToWorld(sx, sy),
     [game.player.x, game.player.y],
     pd.hotbarIndex,
+    game.player.facing,
   );
   game.update(dt, inputState);
   renderer.render(game, inputState, game.interpolationAlpha, dt);

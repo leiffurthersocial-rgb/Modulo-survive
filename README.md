@@ -32,7 +32,7 @@ npm run ci         # lint + typecheck + tests + build
 | Action | Input |
 |---|---|
 | Move / jump | A · D / Space (double-tap ledges: hold toward wall to climb as Jovan) |
-| Mine / attack / use | Left mouse (aimed at cursor) |
+| Mine / attack / use | Left mouse — **hold** to keep mining or auto-attack |
 | Place block / interact | Right mouse |
 | Hotbar | 1–0 / mouse wheel |
 | Inventory & crafting | E |
@@ -42,6 +42,12 @@ npm run ci         # lint + typecheck + tests + build
 | Pause / settings | Esc |
 
 Gamepad and mobile touch controls are built in; keys are rebindable in Settings.
+
+**Forgiving controls:** targeting snaps to the nearest block within reach, so you
+don't need pixel-perfect aim (the reticle shows exactly what you'll hit). Melee,
+bows and wands have aim assist that bends toward the nearest enemy in front of
+you, and holding the attack button auto-repeats — combat and mining work well on
+both desktop and touch.
 
 ## Repository layout
 

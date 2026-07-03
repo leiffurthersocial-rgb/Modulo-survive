@@ -9,13 +9,13 @@ import { AIR, block, blockByKey, blockId, blockIdOpt } from '../data/blocks';
 import { itemByKey } from '../data/items';
 import { statusByKey } from '../data/status';
 import type { AccessoryEffect, CharacterDef } from '../data/types';
-import { clamp } from '../core/math';
+import { clamp, wrapAngle } from '../core/math';
 import { makeEntity, type Entity } from './entities';
 import { Inventory } from './inventory';
 import { addStatus, applyDamage, hasStatus, spawnDrop, statusMult, BASE_CRIT } from './combat';
 import { applyGravity, hazardAt, moveEntity, touchingClimbable } from './physics';
 import { spawnProjectile } from './projectiles';
-import { spawnEnemy } from './ai';
+import { spawnEnemy, lineOfSight } from './ai';
 import { tryActivatePortal } from './portals';
 import type { InputState, PlayerData, Sim } from './sim';
 import { INV_SLOTS, ARMOR_SLOTS, ACCESSORY_SLOTS } from '../data/constants';
@@ -52,6 +52,8 @@ export function createPlayer(character: CharacterDef, x: number, y: number): Ent
     mineX: -1,
     mineY: -1,
     mineProgress: 0,
+    targetX: -999,
+    targetY: -999,
     respawnX: x,
     respawnY: y,
     respawnT: 0,
@@ -179,7 +181,12 @@ export function updatePlayer(sim: Sim, input: InputState, dt: number): void {
   pd.useCooldown -= dt;
   if (pd.swingT > 0) pd.swingT -= dt;
 
+  // Highlight the block/tile currently targeted (drives the reticle).
+  updateTargetTile(sim, input);
+
   if (input.interactPressed) interact(sim, input);
+  // Holding the primary button auto-repeats: continuous mining, and auto-attack
+  // for weapons (the swing/shot rate is gated by useCooldown).
   if (input.use && pd.useCooldown <= 0) useSelected(sim, input, dt);
   else if (!input.use) {
     pd.mineProgress = 0;
@@ -296,6 +303,115 @@ function aimClamped(sim: Sim, input: InputState): { x: number; y: number; ang: n
   return { x: p.x + (dx / dist) * r, y: p.y + (dy / dist) * r, ang: Math.atan2(dy, dx) };
 }
 
+/** True if a tile's center is within reach of the player. */
+function tileInReach(sim: Sim, tx: number, ty: number): boolean {
+  const p = sim.player;
+  const ddx = tx + 0.5 - p.x;
+  const ddy = ty + 0.5 - p.y;
+  return ddx * ddx + ddy * ddy <= (REACH_TILES + 0.6) * (REACH_TILES + 0.6);
+}
+
+/**
+ * Forgiving mine targeting: pick the block the player is pointing at, snapped
+ * into reach. If the exact aim tile is empty, grab the nearest actual block
+ * near the aim that is in range — so rough aiming (especially on touch) still
+ * selects a real block. `wall` targets the background-wall layer (hammer).
+ */
+function resolveMineTarget(sim: Sim, input: InputState, wall: boolean): { tx: number; ty: number } | null {
+  const p = sim.player;
+  const dx = input.aimX - p.x;
+  const dy = input.aimY - p.y;
+  const dist = Math.hypot(dx, dy) || 0.0001;
+  const r = Math.min(dist, REACH_TILES);
+  const ax = p.x + (dx / dist) * r;
+  const ay = p.y + (dy / dist) * r;
+  const cx = Math.floor(ax);
+  const cy = Math.floor(ay);
+  const get = (x: number, y: number) => (wall ? sim.world.getWall(x, y) : sim.world.getTile(x, y));
+
+  // The exact aim tile wins when it holds a block in range.
+  if (get(cx, cy) !== AIR && tileInReach(sim, cx, cy)) return { tx: cx, ty: cy };
+
+  // Otherwise snap to the closest block to the aim point, within reach.
+  let best: { tx: number; ty: number } | null = null;
+  let bestD = Infinity;
+  for (let ry = -2; ry <= 2; ry++) {
+    for (let rx = -2; rx <= 2; rx++) {
+      const x = cx + rx;
+      const y = cy + ry;
+      if (get(x, y) === AIR || !tileInReach(sim, x, y)) continue;
+      const ex = x + 0.5 - ax;
+      const ey = y + 0.5 - ay;
+      const d = ex * ex + ey * ey;
+      if (d < bestD) {
+        bestD = d;
+        best = { tx: x, ty: y };
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * Aim assist: bend the firing/swing angle toward the nearest enemy inside a
+ * cone of the player's aim. Makes melee and ranged combat land without precise
+ * aiming (essential for touch). Returns the base angle when no target fits.
+ */
+function assistAngle(sim: Sim, baseAng: number, range: number, cone: number, requireLoS: boolean, lead = 0): number {
+  const p = sim.player;
+  let best: Entity | null = null;
+  let bestScore = Infinity;
+  for (const e of sim.entities) {
+    if (e.kind !== 'enemy' || e.dead || e.data.ownerId) continue;
+    const dx = e.x - p.x;
+    const dy = e.y - p.y;
+    const d = Math.hypot(dx, dy);
+    if (d > range) continue;
+    const diff = Math.abs(wrapAngle(Math.atan2(dy, dx) - baseAng));
+    if (diff > cone) continue;
+    if (requireLoS && !lineOfSight(sim, p.x, p.y - 0.3, e.x, e.y)) continue;
+    const score = d + diff * 4; // prefer close, well-aligned targets
+    if (score < bestScore) {
+      bestScore = score;
+      best = e;
+    }
+  }
+  if (!best) return baseAng;
+  return Math.atan2(best.y + best.vy * lead - p.y, best.x + best.vx * lead - p.x);
+}
+
+/** Update the reticle target tile (mining/placement) shown by the renderer. */
+function updateTargetTile(sim: Sim, input: InputState): void {
+  const pd = sim.player.data as PlayerData;
+  const slot = selected(pd);
+  const item = slot ? itemByKey(slot.key) : null;
+  if (!item || item.kind === 'tool') {
+    const wall = item?.tool?.type === 'hammer';
+    if (item?.tool?.type === 'hoe') {
+      const a = aimClamped(sim, input);
+      pd.targetX = Math.floor(a.x);
+      pd.targetY = Math.floor(a.y);
+      return;
+    }
+    const t = resolveMineTarget(sim, input, wall);
+    if (t) {
+      pd.targetX = t.tx;
+      pd.targetY = t.ty;
+    } else {
+      pd.targetX = -999;
+      pd.targetY = -999;
+    }
+  } else if (item.kind === 'block' || item.kind === 'wall' || item.kind === 'seed' || item.kind === 'bucket') {
+    const a = aimClamped(sim, input);
+    pd.targetX = Math.floor(a.x);
+    pd.targetY = Math.floor(a.y);
+  } else {
+    // Weapons/consumables: no tile reticle.
+    pd.targetX = -999;
+    pd.targetY = -999;
+  }
+}
+
 function useSelected(sim: Sim, input: InputState, dt: number): void {
   const p = sim.player;
   const pd = p.data as PlayerData;
@@ -338,10 +454,15 @@ function useSelected(sim: Sim, input: InputState, dt: number): void {
 
 function mine(sim: Sim, input: InputState, tool: { type: string; power: number; speed: number }, dt: number): void {
   const pd = sim.player.data as PlayerData;
-  const aim = aimClamped(sim, input);
   const isHammer = tool.type === 'hammer';
-  const tx = Math.floor(aim.x);
-  const ty = Math.floor(aim.y);
+  // Smart target: the block under the aim, or the nearest block in reach.
+  const target = resolveMineTarget(sim, input, isHammer);
+  if (!target) {
+    pd.mineProgress = 0;
+    pd.mineX = -1;
+    return;
+  }
+  const { tx, ty } = target;
   const id = isHammer ? sim.world.getWall(tx, ty) : sim.world.getTile(tx, ty);
   if (id === AIR) {
     pd.mineProgress = 0;
@@ -364,7 +485,8 @@ function mine(sim: Sim, input: InputState, tool: { type: string; power: number; 
   const mineSpeed = tool.speed * sim.bonus('mineSpeed');
   pd.mineProgress += (mineSpeed / Math.max(0.05, def.hardness)) * dt;
   pd.swingT = 0.2;
-  pd.swingAngle = aim.ang;
+  pd.swingAngle = Math.atan2(ty + 0.5 - sim.player.y, tx + 0.5 - sim.player.x);
+  sim.player.facing = tx + 0.5 >= sim.player.x ? 1 : -1;
   if (sim.rng.next() < dt * 6) {
     sim.bus.emit('particles', { key: 'mine', x: tx + 0.5, y: ty + 0.5, count: 2, color: def.color });
     sim.bus.emit('sound', { key: def.tool === 'axe' ? 'chop' : 'dig', x: tx, y: ty });
@@ -532,6 +654,12 @@ function attack(sim: Sim, input: InputState, itemKey: string): void {
     case 'sword':
     case 'spear': {
       const reach = w.type === 'spear' ? 3.4 : 2.4;
+      // Aim assist: swing toward the nearest enemy in range so melee lands
+      // without precise aiming. Spears keep a tighter arc than swords.
+      const swingCone = w.type === 'spear' ? 0.8 : 1.5;
+      const attackAng = assistAngle(sim, aim.ang, reach + 1.5, swingCone, false);
+      pd.swingAngle = attackAng;
+      p.facing = Math.cos(attackAng) >= 0 ? 1 : -1;
       const dmg = Math.round(w.dmg * (sim.bonus('meleeDamage')) * statusMult(p, 'dmgMult'));
       let hitAny = false;
       for (const e of sim.entities) {
@@ -540,11 +668,9 @@ function attack(sim: Sim, input: InputState, itemKey: string): void {
         const dy = e.y - p.y;
         const dist = Math.hypot(dx, dy);
         if (dist > reach + e.w) continue;
-        // Directional arc: target must be within ~70° of the aim.
-        const ang = Math.atan2(dy, dx);
-        let diff = Math.abs(ang - aim.ang);
-        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff > (w.type === 'spear' ? 0.5 : 1.2)) continue;
+        // Directional arc around the (assisted) swing angle.
+        const diff = Math.abs(wrapAngle(Math.atan2(dy, dx) - attackAng));
+        if (diff > swingCone) continue;
         const crit = sim.rng.next() < critChance;
         applyDamage(sim, e, dmg, { crit, knockX: Math.sign(dx) * w.knockback, knockY: -w.knockback * 0.5 });
         hitAny = true;
@@ -560,14 +686,18 @@ function attack(sim: Sim, input: InputState, itemKey: string): void {
       }
       pd.inventory.remove(ammo, 1);
       const dmg = Math.round(w.dmg * (sim.bonus('bowDamage')) * statusMult(p, 'dmgMult'));
+      // Flatter, faster arrows + generous aim assist make bows point-and-shoot.
       const spec = {
         look: 'arrow' as const,
-        speed: 26,
-        gravity: 0.25,
+        speed: 34,
+        gravity: 0.06,
         color: ammo === 'emberArrow' ? 0xff8a50 : ammo === 'frostArrow' ? 0x9ff0ff : 0xd9c27e,
         status: ammo === 'emberArrow' ? { key: 'burning', duration: 3, chance: 0.6 } : ammo === 'frostArrow' ? { key: 'freezing', duration: 2.5, chance: 0.6 } : undefined,
       };
-      spawnProjectile(sim, true, p.x, p.y - 0.3, aim.ang, spec, dmg, { crit: sim.rng.next() < critChance, knockback: w.knockback });
+      const fireAng = assistAngle(sim, aim.ang, 34, 0.65, true, 0.15);
+      pd.swingAngle = fireAng;
+      p.facing = Math.cos(fireAng) >= 0 ? 1 : -1;
+      spawnProjectile(sim, true, p.x, p.y - 0.3, fireAng, spec, dmg, { crit: sim.rng.next() < critChance, knockback: w.knockback });
       sim.bus.emit('sound', { key: 'bow', x: p.x, y: p.y });
       break;
     }
@@ -579,7 +709,11 @@ function attack(sim: Sim, input: InputState, itemKey: string): void {
       }
       pd.mana -= cost;
       const dmg = Math.round(w.dmg * statusMult(p, 'dmgMult'));
-      spawnProjectile(sim, true, p.x, p.y - 0.3, aim.ang, w.projectile!, dmg, { crit: sim.rng.next() < critChance, knockback: w.knockback });
+      // Homing bolts already track; still nudge the launch angle toward a target.
+      const castAng = assistAngle(sim, aim.ang, 30, 0.7, true, 0.15);
+      pd.swingAngle = castAng;
+      p.facing = Math.cos(castAng) >= 0 ? 1 : -1;
+      spawnProjectile(sim, true, p.x, p.y - 0.3, castAng, w.projectile!, dmg, { crit: sim.rng.next() < critChance, knockback: w.knockback });
       sim.bus.emit('sound', { key: 'cast', x: p.x, y: p.y });
       break;
     }

@@ -55,6 +55,9 @@ export interface PlayerData {
   mineX: number;
   mineY: number;
   mineProgress: number;
+  /** Highlighted target tile for the reticle (-999 = none). */
+  targetX: number;
+  targetY: number;
   respawnX: number;
   respawnY: number;
   respawnT: number;

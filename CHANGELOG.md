@@ -5,6 +5,16 @@ All notable changes to MODULO: SURVIVE are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- **Easier controls.** Block targeting now snaps to the nearest block within
+  reach instead of requiring pixel-perfect aim, and the reticle highlights the
+  exact tile that will be mined or placed. Combat gained aim assist: melee swings,
+  bows and wands bend toward the nearest enemy in the aim cone, and holding the
+  attack button auto-repeats (continuous mining / auto-attack). Arrows fly flatter
+  and faster. Touch aiming defaults to a sensible forward-and-down direction when
+  the joystick is idle. These make mining and combat work well on both desktop and
+  mobile without precise aiming.
+
 ## [0.1.0] — 2026-07-02
 
 ### Added

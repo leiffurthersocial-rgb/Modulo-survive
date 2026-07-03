@@ -155,7 +155,7 @@ export class Renderer {
   }
 
   /** Main per-frame hook. `alpha` = interpolation between sim steps. */
-  render(game: Game, input: InputState, alpha: number, dtReal: number): void {
+  render(game: Game, _input: InputState, alpha: number, dtReal: number): void {
     this.animT += dtReal;
     const screenW = this.app.screen.width;
     const screenH = this.app.screen.height;
@@ -256,9 +256,14 @@ export class Renderer {
     } else {
       this.crack.visible = false;
     }
-    const aimDist = Math.hypot(input.aimX - px, input.aimY - py);
-    this.reticle.visible = aimDist < 8;
-    this.reticle.position.set(Math.floor(input.aimX) * TILE, Math.floor(input.aimY) * TILE);
+    // Reticle highlights the resolved target tile (snapped into reach), so the
+    // player always sees exactly which block they'll mine or where they'll build.
+    if (pd.targetX > -900) {
+      this.reticle.visible = true;
+      this.reticle.position.set(pd.targetX * TILE, pd.targetY * TILE);
+    } else {
+      this.reticle.visible = false;
+    }
 
     // --- player glow (light aura accessories / nightvision) ---
     const aura = pd.accessories.slots.some((s) => s && s.key === 'lightCore') || game.player.statuses.some((s) => s.key === 'nightvision');

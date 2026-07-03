@@ -61,7 +61,7 @@ export class InputManager {
   onUIAction: (action: Action) => void = () => void 0;
   /** True while a UI panel wants to swallow game input. */
   uiCapture = false;
-  touch = { active: false, moveX: 0, jump: false, use: false, interact: false, dodge: false, aimAngle: 0 };
+  touch = { active: false, moveX: 0, jump: false, use: false, interact: false, dodge: false, aimAngle: 0, aimActive: false };
 
   attach(target: HTMLElement): void {
     window.addEventListener('keydown', (e) => {
@@ -121,7 +121,12 @@ export class InputManager {
   }
 
   /** Build this frame's InputState. screenToWorld converts the cursor. */
-  getState(screenToWorld: (sx: number, sy: number) => [number, number], playerPos: [number, number], currentHotbar: number): InputState {
+  getState(
+    screenToWorld: (sx: number, sy: number) => [number, number],
+    playerPos: [number, number],
+    currentHotbar: number,
+    facing = 1,
+  ): InputState {
     // Gamepad.
     let gpMoveX = 0;
     let gpJump = false;
@@ -172,7 +177,16 @@ export class InputManager {
     }
     this.hotbarSelect = -1;
 
-    const [aimX, aimY] = gpAim ?? (this.touch.active ? [playerPos[0] + Math.cos(this.touch.aimAngle) * 4, playerPos[1] + Math.sin(this.touch.aimAngle) * 4] : screenToWorld(this.mouseX, this.mouseY));
+    // Touch aim: while the stick is pushed, aim in its direction; otherwise
+    // default forward-and-slightly-down (a good default for digging/building).
+    // Combat aim-assist handles enemies regardless, so this need not be precise.
+    let touchAim: [number, number];
+    if (this.touch.aimActive) {
+      touchAim = [playerPos[0] + Math.cos(this.touch.aimAngle) * 5, playerPos[1] + Math.sin(this.touch.aimAngle) * 5];
+    } else {
+      touchAim = [playerPos[0] + facing * 3.5, playerPos[1] + 2];
+    }
+    const [aimX, aimY] = gpAim ?? (this.touch.active ? touchAim : screenToWorld(this.mouseX, this.mouseY));
 
     const capture = this.uiCapture;
     const state: InputState = {
